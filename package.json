@@ -17,7 +17,7 @@
   },
   "license": "MIT",
   "author": "colezhang666",
-  "description": "Local image, video and realtime virtual try-on workbench powered by Decart APIs.",
+  "description": "实时换装、虚拟试装工作台，支持图片、短视频和相机试装。",
   "repository": {
     "type": "git",
     "url": "https://github.com/colezhang666/tryon-lab.git"
