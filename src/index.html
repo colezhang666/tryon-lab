@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>TryOn Lab · 实时试穿</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#studio"
+        ><span class="brand-mark">T</span>TryOn <b>Lab</b></a
+      >
+      <div class="top-meta">
+        <span class="local-label">本地运行</span
+        ><span id="key-status" role="status">正在读取接入状态</span>
+      </div>
+    </header>
+    <div class="shell">
+      <aside class="sidebar">
+        <p class="nav-caption">试穿控制台</p>
+        <nav aria-label="主导航">
+          <a href="#studio" data-nav="studio"
+            ><span aria-hidden="true">◫</span>实时试穿</a
+          ><a href="#image" data-nav="image"
+            ><span aria-hidden="true">✧</span>一键换装</a
+          ><a href="#video" data-nav="video"
+            ><span aria-hidden="true">▷</span>视频试穿</a
+          ><a href="#results" data-nav="results"
+            ><span aria-hidden="true">▧</span>本次截图
+            <span id="result-count" class="count">0</span></a
+          ><a href="#billing" data-nav="billing"
+            ><span aria-hidden="true">▤</span>账单用量</a
+          ><a href="#settings" data-nav="settings"
+            ><span aria-hidden="true">⚙</span>接入说明</a
+          >
+        </nav>
+        <div class="sidebar-note">
+          <strong>一次小实验</strong>
+          <p>上传衣服，看看它穿在身上的样子。</p>
+          <span>Powered by Decart</span>
+        </div>
+      </aside>
+      <main>
+        <section
+          id="billing"
+          class="page"
+          hidden
+          aria-labelledby="billing-title"
+        >
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 用量核对</div>
+              <h1 id="billing-title" tabindex="-1">账单用量</h1>
+              <p>看清实际积分与本地调用，费用估算和平台实扣分开记录。</p>
+            </div>
+            <button id="refresh-billing" class="secondary">刷新本地账单</button>
+          </div>
+          <div class="billing-summary">
+            <div>
+              <p>平台累计消耗 · 积分</p>
+              <strong id="official-spent">待核对</strong>
+            </div>
+            <div>
+              <p>平台余额 · 积分</p>
+              <strong id="official-balance">待核对</strong>
+            </div>
+            <div>
+              <p>图片模型已消耗 · 积分</p>
+              <strong id="official-image-spent">待核对</strong>
+            </div>
+            <div>
+              <p>VTON模型已消耗 · 积分</p>
+              <strong id="official-video-spent">待核对</strong>
+            </div>
+          </div>
+          <p id="billing-checked" class="field-help">正在读取核对时间…</p>
+          <div class="billing-actions">
+            <a
+              class="button primary"
+              href="https://platform.decart.ai/usage"
+              target="_blank"
+              rel="noopener noreferrer"
+              >打开官方用量页 ↗</a
+            ><button id="open-reconcile">录入平台核对值</button
+            ><button id="export-billing">导出本地账单 JSON</button>
+          </div>
+          <div class="inline-note billing-note">
+            本版未接通平台账单自动同步，实际数值需由用户在官网登录核对后录入。本页平台数字是人工核对快照，保留核对时间。后续调用自动记在下方，平台余额不会因此自动更新。平台统计含账号全部
+            API Key，本地表只统计这个 Demo。
+          </div>
+          <section id="reconcile-panel" class="settings-sheet" hidden>
+            <h2>按官方页面录入核对值</h2>
+            <p>
+              请先核对账号、统计范围和显示的积分。这里只保存本机记录，不修改官方余额。
+            </p>
+            <form id="reconcile-form" class="reconcile-grid">
+              <label
+                >累计消耗（必填）<input
+                  id="reconcile-spent"
+                  type="number"
+                  min="0"
+                  max="1000000000"
+                  step="0.001"
+                  required /></label
+              ><label
+                >当前余额（必填）<input
+                  id="reconcile-balance"
+                  type="number"
+                  min="0"
+                  max="1000000000"
+                  step="0.001"
+                  required /></label
+              ><label
+                >图片模型消耗（可选）<input
+                  id="reconcile-image"
+                  type="number"
+                  min="0"
+                  step="0.001" /></label
+              ><label
+                >VTON模型消耗（可选，含视频/实时）<input
+                  id="reconcile-video"
+                  type="number"
+                  min="0"
+                  step="0.001" /></label
+              ><button id="save-reconcile" class="primary">保存核对记录</button>
+            </form>
+          </section>
+          <div class="billing-table-heading">
+            <div>
+              <h2>本地调用明细</h2>
+              <p>
+                已完成调用预估合计：<strong id="local-estimate">—</strong
+                >。只汇总下表最近500条已完成/结束且有用量的数据。
+              </p>
+            </div>
+          </div>
+          <p class="field-help">
+            参考折算：图片2积分/张、视频4积分/秒、相机实时2积分/生成秒。仅作参考换算，仅用于预估，不是平台逐笔扣费。失败、未知、仅签发凭证不能视作免费。
+          </p>
+          <div class="billing-table-wrap">
+            <table class="billing-table">
+              <thead>
+                <tr>
+                  <th>时间（北京时间）</th>
+                  <th>类型</th>
+                  <th>模型</th>
+                  <th>状态（最后记录）</th>
+                  <th>用量依据</th>
+                  <th>参考积分</th>
+                  <th>逐笔实际积分</th>
+                  <th>记录来源</th>
+                </tr>
+              </thead>
+              <tbody id="billing-records"></tbody>
+            </table>
+            <p id="billing-empty" class="billing-empty">
+              尚无本地调用记录，未来生成会自动记录，刷新和重启后仍保留。
+            </p>
+          </div>
+          <div id="billing-message" class="status-message" role="status"></div>
+        </section>
+        <section id="image" class="page" hidden aria-labelledby="image-title">
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 图片体验</div>
+              <h1 id="image-title" tabindex="-1">一键换装</h1>
+              <p>一张人物照片，一张衣服图，试试新的穿搭。</p>
+            </div>
+            <span id="image-job-state" class="model-tag">未提交</span>
+          </div>
+          <div class="workspace">
+            <div class="video-workspace">
+              <div class="video-grid">
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>人物原图</h2>
+                    <span>本地预览</span>
+                  </div>
+                  <div class="video-stage image-stage">
+                    <img
+                      id="image-person-preview"
+                      alt="待换装的人物原图"
+                      hidden
+                    />
+                    <div id="image-person-empty" class="video-empty">
+                      <span class="empty-symbol">▧</span
+                      ><strong>选一张人物照片</strong>
+                      <p>
+                        脸部和身体清晰、光线均匀<br />换上衣时让双手完整入镜
+                      </p>
+                    </div>
+                  </div>
+                  <div class="panel-footer">
+                    <span id="image-person-name">尚未选择人物照片</span>
+                  </div>
+                </section>
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>换装结果</h2>
+                    <span>Lucy Image 2 · 720p</span>
+                  </div>
+                  <div class="video-stage image-stage">
+                    <img
+                      id="image-result-preview"
+                      alt="云端生成的图片换装结果"
+                      hidden
+                    />
+                    <div id="image-result-empty" class="video-empty">
+                      <span class="empty-symbol">✧</span
+                      ><strong>新造型在这里呈现</strong>
+                      <p>
+                        只有点击“一键换装”后才上传生成<br />结果来自 Decart
+                        云端图片模型
+                      </p>
+                    </div>
+                  </div>
+                  <div class="panel-footer">
+                    <button id="load-image-result" class="text-button" disabled>
+                      加载已有结果</button
+                    ><a id="download-image" hidden>下载原图</a>
+                  </div>
+                </section>
+              </div>
+              <div class="session-bar">
+                <div>
+                  <span class="small-label">单张 720p 参考价</span
+                  ><strong>$0.02</strong>
+                </div>
+                <div class="session-actions">
+                  <button id="refresh-image-job" class="secondary">
+                    刷新生成状态</button
+                  ><button id="generate-image" class="primary" disabled>
+                    一键换装
+                  </button>
+                </div>
+              </div>
+              <div id="image-message" class="status-message" role="status">
+                选择人物照片和衣服图后开始。
+              </div>
+              <div class="guidance">
+                <strong>小建议</strong>
+                <p>
+                  优先用背景干净的衣服单品图。生成后对比五官、手部和衣服细节；图片结果不保证与视频模型完全一致。
+                </p>
+              </div>
+            </div>
+            <aside class="controls">
+              <div class="controls-heading">
+                <h2>换装设置</h2>
+                <span>单张生成</span>
+              </div>
+              <fieldset id="image-form">
+                <div class="field">
+                  <label for="image-person"
+                    >人物照片 <span class="required">必选</span></label
+                  ><input
+                    id="image-person"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                  />
+                  <p class="field-help">
+                    JPG / PNG / WebP，≤10 MiB、1600万像素。不会进行人脸建档。
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="image-garment"
+                    >衣服参考图 <span class="required">必选</span></label
+                  ><input
+                    id="image-garment"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                  /><img
+                    id="image-garment-preview"
+                    class="reference-preview"
+                    alt="选择的衣服参考图"
+                    hidden
+                  />
+                  <p id="image-garment-name" class="field-help">
+                    优先使用只有衣服的清晰图片
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="image-prompt"
+                    >换装要求 <span class="optional">可选</span></label
+                  ><textarea
+                    id="image-prompt"
+                    maxlength="500"
+                    rows="3"
+                    placeholder="例如：换成参考图中的灰色外套，敞开穿着，保留原人物和背景。"
+                  ></textarea>
+                  <p class="field-help">
+                    留空默认替换上身服装，保留人物和背景。
+                  </p>
+                </div>
+                <div class="cost-summary">
+                  <span>官方图片模型参考价</span
+                  ><strong>$0.02 <small>/ 张</small></strong>
+                  <p>
+                    固定720p，按次计费。积分折算尚未实扣确认，实际用量以官方平台为准。
+                  </p>
+                </div>
+                <label class="consent"
+                  ><input id="image-consent" type="checkbox" /><span
+                    >我了解两张图片会发送至
+                    Decart，点击生成会消耗额度。离开网页不会取消已提交的生成。</span
+                  ></label
+                >
+              </fieldset>
+            </aside>
+          </div>
+        </section>
+        <section id="video" class="page" hidden aria-labelledby="video-title">
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 视频体验</div>
+              <h1 id="video-title" tabindex="-1">视频试穿</h1>
+              <p>
+                上传时长大于 0、且不超过 20 秒的视频。5 秒、7.5 秒、19
+                秒都可以。
+              </p>
+            </div>
+            <span id="video-job-state" class="model-tag">未提交</span>
+          </div>
+          <div class="workspace">
+            <div class="video-workspace">
+              <div class="video-grid">
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>原始视频</h2>
+                    <span>本地预览</span>
+                  </div>
+                  <div class="video-stage">
+                    <video
+                      id="uploaded-video"
+                      controls
+                      playsinline
+                      preload="metadata"
+                      hidden
+                      aria-label="已上传的原始视频"
+                    ></video>
+                    <div id="video-source-empty" class="video-empty">
+                      <span class="empty-symbol">▷</span
+                      ><strong>选一段想试穿的视频</strong>
+                      <p>
+                        MP4 · 时长 ≤ 20 秒 · 最大 50 MiB<br />不限制为固定的 5 /
+                        10 / 20 秒
+                      </p>
+                    </div>
+                  </div>
+                  <div class="panel-footer">
+                    <span id="video-file-info">尚未选择视频</span>
+                  </div>
+                </section>
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>试穿结果</h2>
+                    <span>云端视频任务</span>
+                  </div>
+                  <div class="video-stage">
+                    <video
+                      id="generated-video"
+                      controls
+                      playsinline
+                      hidden
+                      aria-label="云端生成的视频结果"
+                    ></video>
+                    <div id="video-result-empty" class="video-empty">
+                      <span class="empty-symbol">✧</span
+                      ><strong>生成后在这里播放</strong>
+                      <p>
+                        只显示平台返回的视频，<br />不会用原视频代替试穿结果。
+                      </p>
+                    </div>
+                  </div>
+                  <div class="panel-footer">
+                    <button id="load-video-result" class="text-button" disabled>
+                      加载生成结果</button
+                    ><a id="download-video" download="tryon-result.mp4" hidden
+                      >下载 MP4</a
+                    >
+                  </div>
+                </section>
+              </div>
+              <div class="session-bar">
+                <div>
+                  <span class="small-label">按输入时长估算</span
+                  ><strong id="video-cost">—</strong>
+                </div>
+                <div class="session-actions">
+                  <button id="refresh-video-job" class="secondary">
+                    刷新任务状态</button
+                  ><button id="submit-video" class="primary" disabled>
+                    提交视频试穿
+                  </button>
+                </div>
+              </div>
+              <div id="video-message" class="status-message" role="status">
+                选择视频与服装图后提交。
+              </div>
+              <div class="guidance">
+                <strong>视频任务说明</strong>
+                <p>
+                  提交后进入云端队列，切页、关闭网页或停止本地播放均不会取消任务或保证停止扣费。遇到超时先查任务状态，避免重复提交。
+                </p>
+              </div>
+            </div>
+            <aside class="controls">
+              <div class="controls-heading">
+                <h2>视频设置</h2>
+                <span>Lucy VTON 3.5</span>
+              </div>
+              <fieldset id="video-form">
+                <div class="field">
+                  <label for="video-source"
+                    >人物视频 <span class="required">必选</span></label
+                  ><input
+                    id="video-source"
+                    type="file"
+                    accept="video/mp4,.mp4"
+                  />
+                  <p class="field-help">
+                    支持 MP4（H.264 / VP8），任意正时长 ≤ 20
+                    秒；服务端再次校验。不是所有格式。
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="video-garment">服装参考图</label
+                  ><input
+                    id="video-garment"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                  />
+                  <p id="video-image-info" class="field-help">
+                    JPG / PNG / WebP，≤ 10 MiB
+                  </p>
+                </div>
+                <div class="field">
+                  <label for="video-prompt"
+                    >试穿要求 <span class="optional">可选</span></label
+                  ><textarea
+                    id="video-prompt"
+                    rows="3"
+                    maxlength="500"
+                    placeholder="例如：替换成参考图里的上衣，保留人物和背景。"
+                  ></textarea>
+                </div>
+                <div class="cost-summary">
+                  <span>视频模型公开参考价</span
+                  ><strong>$0.04 <small>/ 生成秒</small></strong>
+                  <p>
+                    5 秒约 $0.20；20 秒约
+                    $0.80。与相机实时模式不同，积分折算与实际费用请查官方平台。
+                  </p>
+                </div>
+                <label class="consent"
+                  ><input id="video-consent" type="checkbox" /><span
+                    >我了解视频及服装图将上传到
+                    Decart（含原文件已有音轨），任务按视频模型规则计费，提交后离开页面不会取消生成。</span
+                  ></label
+                >
+              </fieldset>
+            </aside>
+          </div>
+        </section>
+        <section id="studio" class="page" aria-labelledby="studio-title">
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 实时体验</div>
+              <h1 id="studio-title" tabindex="-1">实时试穿</h1>
+              <p>从一张服装图开始，对照原始画面查看试穿效果。</p>
+            </div>
+            <span class="model-tag">Lucy VTON 3.5 <span>标准模式</span></span>
+          </div>
+          <div class="workspace">
+            <div class="video-workspace">
+              <div class="video-grid">
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>原始画面</h2>
+                    <span id="camera-status">本地预览</span>
+                  </div>
+                  <div class="video-stage">
+                    <video
+                      id="input-video"
+                      autoplay
+                      playsinline
+                      muted
+                      aria-label="本地摄像头画面"
+                    ></video>
+                    <div id="input-empty" class="video-empty">
+                      <span class="empty-symbol" aria-hidden="true">◉</span
+                      ><strong>让衣服有个主角</strong>
+                      <p>
+                        打开摄像头，站在光线充足的位置。<br />开始试穿前，画面仅在本地预览。
+                      </p>
+                      <button id="open-camera" class="light-button">
+                        打开摄像头
+                      </button>
+                    </div>
+                    <button id="play-input" class="video-play" hidden>
+                      点击播放本地画面</button
+                    ><span class="canvas-label">相机输入 · 不采集声音</span>
+                  </div>
+                  <div class="panel-footer">
+                    <span id="local-note">摄像头尚未开启</span
+                    ><button id="close-camera" class="text-button" disabled>
+                      关闭摄像头
+                    </button>
+                  </div>
+                </section>
+                <section class="video-panel">
+                  <div class="panel-heading">
+                    <h2>AI 试穿</h2>
+                    <span id="cloud-status">等待开始</span>
+                  </div>
+                  <div class="video-stage output-stage">
+                    <video
+                      id="output-video"
+                      autoplay
+                      playsinline
+                      muted
+                      aria-label="Decart 返回的试穿画面"
+                    ></video>
+                    <div id="output-empty" class="video-empty">
+                      <span class="empty-symbol" aria-hidden="true">✧</span
+                      ><strong>新造型，即将在这里出现</strong>
+                      <p>
+                        选择服装图并开始试穿，<br />这里显示云端返回的实时画面。
+                      </p>
+                    </div>
+                    <button id="play-output" class="video-play" hidden>
+                      点击播放云端画面</button
+                    ><span class="canvas-label">云端输出 · 720p 模型</span>
+                  </div>
+                  <div class="panel-footer">
+                    <span id="output-note">尚未连接云端</span
+                    ><button id="capture" class="text-button" disabled>
+                      保存截图
+                    </button>
+                  </div>
+                </section>
+              </div>
+              <div class="session-bar">
+                <div>
+                  <span class="small-label">本次连接计时</span
+                  ><strong id="timer">00:00 <span>/ 00:20</span></strong>
+                </div>
+                <div class="session-actions">
+                  <button id="stop" class="stop-button" disabled>
+                    停止试穿</button
+                  ><button id="start" class="primary" disabled>
+                    开始试穿 <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </div>
+              <div
+                id="session-message"
+                class="status-message"
+                role="status"
+                aria-live="polite"
+              >
+                先打开摄像头，再上传一张服装图。
+              </div>
+              <div class="guidance">
+                <strong>拍摄小建议</strong>
+                <p>
+                  正面入镜，露出上半身，保持背景简单。试穿效果用于视觉体验，不能判断真实尺码。
+                </p>
+              </div>
+            </div>
+            <aside class="controls" aria-label="试穿参数">
+              <div class="controls-heading">
+                <h2>试穿设置</h2>
+                <span>标准速度</span>
+              </div>
+              <fieldset id="parameters">
+                <div class="field">
+                  <label for="garment"
+                    >服装参考图 <span class="required">必选</span></label
+                  >
+                  <div class="upload-area">
+                    <img id="garment-preview" alt="已选择的服装参考图" hidden />
+                    <div id="upload-placeholder">
+                      <span aria-hidden="true">＋</span
+                      ><strong>选一件想试的衣服</strong>
+                      <p>推荐纯色背景的单件服装图</p>
+                    </div>
+                    <input
+                      id="garment"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                    /><label class="upload-button" for="garment"
+                      >选择服装图片</label
+                    >
+                  </div>
+                  <div class="file-meta">
+                    <span id="file-name">JPG / PNG / WebP，≤ 10 MiB</span
+                    ><button id="remove-garment" class="text-button" disabled>
+                      移除
+                    </button>
+                  </div>
+                  <p id="file-error" class="field-error" role="alert"></p>
+                </div>
+                <div class="field">
+                  <label for="prompt"
+                    >试穿要求 <span class="optional">可选</span></label
+                  ><textarea
+                    id="prompt"
+                    rows="3"
+                    maxlength="500"
+                    placeholder="例如：替换成参考图里的上衣，保留原来的裤子和背景。"
+                  ></textarea>
+                  <p class="field-help">留空时，按参考图替换当前上衣。</p>
+                </div>
+                <div class="field">
+                  <label for="duration">单次时限</label
+                  ><select id="duration">
+                    <option value="10">10 秒 · 先试一下</option>
+                    <option value="20" selected>20 秒 · 标准体验</option>
+                    <option value="30">30 秒 · 多看一会</option>
+                  </select>
+                </div>
+              </fieldset>
+              <div class="cost-summary">
+                <span>本次最多约</span
+                ><strong><span id="cost">40</span> <small>积分</small></strong>
+                <p>按 2 积分/秒估算。实际扣费与余额以官方平台为准。</p>
+              </div>
+              <label class="consent"
+                ><input id="consent" type="checkbox" /><span
+                  >我了解：开始后会把相机画面和服装图发至
+                  Decart，并按平台规则消耗积分。</span
+                ></label
+              >
+              <p id="ready-hint" class="field-help">
+                准备好相机和服装图后即可开始。
+              </p>
+            </aside>
+          </div>
+        </section>
+        <section
+          id="results"
+          class="page"
+          hidden
+          aria-labelledby="results-title"
+        >
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 本次记录</div>
+              <h1 id="results-title" tabindex="-1">本次截图</h1>
+              <p>
+                留下这次试穿的一个画面。仅保存在当前网页，刷新会清空，请及时下载。
+              </p>
+            </div>
+            <a href="#studio" class="button secondary">返回试穿</a>
+          </div>
+          <div id="results-empty" class="results-empty">
+            <span class="large-symbol" aria-hidden="true">▧</span>
+            <h2>还没有保存的造型</h2>
+            <p>
+              云端试穿画面出现后，点击“保存截图”。<br />你可以在这里预览、下载和删除，最多保留
+              12 张。
+            </p>
+            <a href="#studio" class="button primary">去试穿</a>
+          </div>
+          <div id="results-grid" class="results-grid"></div>
+        </section>
+        <section
+          id="settings"
+          class="page"
+          hidden
+          aria-labelledby="settings-title"
+        >
+          <div class="page-heading">
+            <div>
+              <div class="breadcrumb">控制台 / 配置与帮助</div>
+              <h1 id="settings-title" tabindex="-1">接入说明</h1>
+              <p>先明确连接与费用，再开始一次小范围验证。</p>
+            </div>
+            <button id="refresh-config" class="secondary">刷新接入状态</button>
+          </div>
+          <div class="settings-sheet">
+            <h2>连接配置</h2>
+            <dl>
+              <dt>永久 API Key</dt>
+              <dd id="setting-key">正在读取</dd>
+              <dt>相机 / 视频模型</dt>
+              <dd>lucy-vton-3.5</dd>
+              <dt>图片一键换装</dt>
+              <dd>
+                lucy-image-2 · 固定720p · 参考$0.02/张，积分折算未实扣确认
+              </dd>
+              <dt>运行方式</dt>
+              <dd>本机网页 + Node 后端 + Decart 云端推理</dd>
+              <dt>速度与时限</dt>
+              <dd>标准速度；每次 10 / 20 / 30 秒；无自动重连</dd>
+              <dt>相机参考价格</dt>
+              <dd>2 积分/秒；20 秒最多约 40 积分</dd>
+              <dt>上传视频</dt>
+              <dd>任意正时长 ≤20 秒的 MP4；视频模型参考 $0.04/生成秒</dd>
+              <dt>账号实际余额</dt>
+              <dd>这里不读取余额，请前往官方控制台查看</dd>
+            </dl>
+            <p class="inline-note">
+              “已配置”只表示后端存在密钥。模型权限、实际余额和试穿效果，需要通过官方平台或实际连接确认。
+            </p>
+            <h2>如何开始</h2>
+            <ol class="help-steps">
+              <li>
+                回到实时试穿，打开摄像头。浏览器会请求权限，不需要麦克风。
+              </li>
+              <li>选择一张清楚的服装图，建议先选择 10 秒。</li>
+              <li>阅读画面上传与费用说明，勾选后点击“开始试穿”。</li>
+              <li>观察右侧云端画面，需要时截图，结束时点击“停止试穿”。</li>
+            </ol>
+            <h2>密钥与照片</h2>
+            <p>
+              永久密钥由本地后端保管，不显示在网页。需要更换时，修改项目中被 Git
+              忽略的 <code>.env</code> 内
+              <code>DECART_API_KEY</code
+              >，再重启后端。浏览器只收到受限的短期连接凭证。
+            </p>
+            <p>
+              相机原图、服装图和试穿画面在开始后会发送至
+              Decart。截图保存在当前页面内存，刷新会丢失；本工具不提供云相册。
+            </p>
+            <h2>停止与常见问题</h2>
+            <p>
+              “视频试穿”会上传 MP4（含已有音轨）和服装图，本地后端用 ffprobe
+              临时文件校验后转交平台，正常校验结束会删除临时文件。视频任务提交后离页不会取消；刷新网页可查询本次后端任务，重启后端会丢失任务内存记录。遇到超时先核对任务，避免重复生成。
+            </p>
+            <p>
+              停止试穿会结束当前云端连接、保留本地预览。关闭摄像头、切换页面或进入后台会同时关闭相机。连接中停止会使迟到结果失效；供应商结束确认可能有网络延迟。
+            </p>
+            <p>
+              连接失败时先检查网络、Key 与官方账号权限。后端每次启动最多签发 5
+              次凭证，并有签发冷却；这是本机保护规则，不表示账号余额不足。确认实际用量后再重启继续。
+            </p>
+            <p>
+              本机运行：在项目目录执行 <code>npm install</code>、<code
+                >npm run build</code
+              >、<code>npm start</code>，打开
+              <code>http://127.0.0.1:4180</code
+              >。服务仅监听本机，不可直接公开部署。
+            </p>
+            <div class="official-links">
+              <a
+                href="https://platform.decart.ai/models/lucy-vton"
+                target="_blank"
+                rel="noopener noreferrer"
+                >官方试穿控制台 ↗</a
+              ><a
+                href="https://docs.platform.decart.ai/getting-started/pricing"
+                target="_blank"
+                rel="noopener noreferrer"
+                >官方计费说明 ↗</a
+              ><a
+                href="https://docs.platform.decart.ai/getting-started/client-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                >短期凭证文档 ↗</a
+              >
+            </div>
+          </div>
+        </section>
+        <footer>
+          TryOn Lab · 本地实验工作台 <span>真实画面，按需开始。</span>
+        </footer>
+      </main>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <dialog id="preview-dialog">
+      <div class="dialog-top">
+        <strong>截图预览</strong
+        ><button id="close-preview" aria-label="关闭截图预览">关闭</button>
+      </div>
+      <img id="preview-image" alt="试穿截图原图" />
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
