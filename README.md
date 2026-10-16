@@ -4,6 +4,8 @@
 
 首次使用请看 [使用说明](使用说明.md)，包含账号注册、API Key 配置、启动步骤和常见问题。
 
+Windows 安装版请看 [桌面版快速上手](桌面版使用说明.md)。安装后点击注册入口，填写自己的 API Key 即可使用，不需要额外安装运行环境。安装包不带任何用户的 Key、账单或素材。
+
 ## 效果展示
 
 ![视频换装前后对比，六个画面中的人脸均已遮挡](docs/assets/tryon-comparison-redacted.png)
@@ -77,6 +79,22 @@ node test/billing-browser-check.mjs
 ```
 
 这些脚本使用声明在开发依赖中的 Playwright 和已安装 Chrome，拦截生成请求；相机测试使用测试流。`PLAYWRIGHT_MODULE` 可覆盖 Playwright 模块位置，通常无需设置。临时输出在被忽略的 `work/`，浏览器账单测试使用模拟数据，不写入真实账本。
+
+## 开发和打包桌面版
+
+在 Windows x64 上执行：
+
+```sh
+npm ci
+npm run desktop:prepare
+npm run desktop
+# 验证桌面配置、重启、权限和媒体流程（模拟生成，测试需要 FFmpeg）
+npm run test:desktop
+# 生成 NSIS 安装包到 release/
+npm run desktop:pack
+```
+
+桌面版使用 Electron 自带运行环境与经过 SHA256 校验的 ffprobe。Key 由 Windows 加密存储，账单保存在当前用户的应用数据目录；服务使用随机端口和应用会话凭证。打包文件采用白名单，排除 `.env`、数据库、测试素材和展示图。当前安装包未签名，不提供自动更新。
 
 ## 代码结构
 

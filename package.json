@@ -1,17 +1,23 @@
 {
   "name": "tryon-lab",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
     "start": "node --env-file-if-exists=.env server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "desktop": "npm run build && electron .",
+    "desktop:prepare": "powershell -NoProfile -ExecutionPolicy Bypass -File desktop/prepare-ffprobe.ps1",
+    "desktop:pack": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "test:desktop": "node test/desktop-check.mjs"
   },
   "dependencies": {
     "@decartai/sdk": "0.2.11"
   },
   "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.15.3",
     "esbuild": "0.25.12",
     "playwright": "1.62.1"
   },
@@ -24,5 +30,70 @@
   },
   "engines": {
     "node": ">=22.22.0"
+  },
+  "main": "desktop/main.cjs",
+  "build": {
+    "appId": "io.tryonlab.desktop",
+    "productName": "TryOn Lab",
+    "directories": {
+      "output": "release"
+    },
+    "asar": true,
+    "npmRebuild": false,
+    "files": [
+      "dist/**/*",
+      "desktop/main.mjs",
+      "desktop/preload.cjs",
+      "desktop/key-store.mjs",
+      "desktop/setup.html",
+      "desktop/setup.css",
+      "desktop/setup.js",
+      "server.mjs",
+      "video-jobs.mjs",
+      "image-generation.mjs",
+      "billing.mjs",
+      "package.json",
+      "LICENSE",
+      "THIRD_PARTY_NOTICES.md",
+      "桌面版使用说明.md",
+      "desktop/icon.ico",
+      "desktop/main.cjs",
+      "src/video-validation.js"
+    ],
+    "extraResources": [
+      {
+        "from": "desktop/vendor/ffprobe",
+        "to": "ffprobe",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "TryOn-Lab-Setup-${version}-${arch}.${ext}",
+      "signExecutable": false,
+      "icon": "desktop/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": false,
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ]
+    }
   }
 }

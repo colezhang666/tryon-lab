@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; form-action 'none'; base-uri 'none'">
+  <title>开始使用 · TryOn Lab</title>
+  <link rel="stylesheet" href="setup.css">
+  <script src="setup.js" defer></script>
+</head>
+<body>
+  <header><span class="brand-mark">T</span><strong>TryOn Lab</strong><span>虚拟试装工作台</span></header>
+  <main>
+    <section aria-labelledby="title">
+      <p class="eyebrow">开始试一件新衣服</p>
+      <h1 id="title">配置你的 API Key</h1>
+      <p class="intro">照片、视频或相机，都能用来试装。先注册 Decart 账号，再把你自己的 Key 填在这里。</p>
+      <ol>
+        <li><span class="step-number">1</span><div><h2>注册账号</h2><p>前往 Decart 官网注册或登录。</p></div><button type="button" data-page="register">打开官网 ↗</button></li>
+        <li><span class="step-number">2</span><div><h2>创建 API Key</h2><p>在 API Keys 页面新建并复制 Key。</p></div><button type="button" data-page="keys">创建 Key ↗</button></li>
+      </ol>
+      <form id="setup-form">
+        <label for="api-key">3 · 粘贴你的 API Key</label>
+        <div class="key-input"><input id="api-key" type="password" autocomplete="off" spellcheck="false" maxlength="512" placeholder="粘贴在 Decart 创建的 Key" aria-describedby="key-help" required><button id="toggle-key" type="button" aria-pressed="false">显示</button></div>
+        <p id="key-help">Key 会加密保存在这台电脑上，不会写入安装包。保存时检查平台认证，不会生成图片或视频。</p>
+        <p class="cost-note">试装会使用你自己的账号额度。免费额度以账号页面为准，<button type="button" data-page="pricing" class="text-button">查看官方价格 ↗</button>。认证成功不代表余额充足或所有模型均可使用。</p>
+        <p id="setup-status" role="status" aria-live="polite"></p>
+        <div class="actions"><button id="save-key" type="submit" class="primary">保存并进入工作台</button><button id="enter-workbench" type="button" hidden>使用已保存的 Key</button><button id="clear-key" type="button" class="danger" hidden>删除已保存的 Key</button></div>
+      </form>
+    </section>
+    <aside><p class="eyebrow">配置一次，下次直接进入</p><h2>三种方式试装</h2><dl><dt>图片一键换装</dt><dd>人物照片 + 服装图，查看上身效果。</dd><dt>短视频换装</dt><dd>上传不超过 20 秒的视频，保留动态画面。</dd><dt>相机实时换装</dt><dd>打开相机，边拍边看试装效果。</dd></dl><p class="aside-note">已有账号？直接创建 Key 即可。以后可以从顶部“应用 → API Key 设置”更换或删除。</p></aside>
+  </main>
+  <dialog id="delete-dialog" aria-labelledby="delete-title"><h2 id="delete-title">删除已保存的 Key？</h2><p>账单记录会保留，下次使用需要重新填写 Key。</p><div class="actions"><button id="cancel-delete" type="button" autofocus>取消</button><button id="confirm-delete" type="button" class="danger">确认删除</button></div></dialog>
+</body>
+</html>

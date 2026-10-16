@@ -436,6 +436,15 @@ $("start").onclick = () => {
 $("stop").onclick = () => session.stop();
 $("capture").onclick = capture;
 $("refresh-config").onclick = loadConfig;
+if (window.tryonDesktop) {
+  document.querySelector(".local-label").textContent = "桌面应用";
+  $("key-configuration-help").textContent = "API Key 已由桌面应用加密保存，不会在工作台显示。点击“API Key 设置”即可更换或删除。相机仅使用受限的临时连接凭证。";
+  $("desktop-key-settings").hidden = false;
+  $("desktop-key-settings").onclick = async () => {
+    const result = await window.tryonDesktop.openSettings();
+    if (!result.ok) notify(result.error);
+  };
+}
 $("close-preview").onclick = () => $("preview-dialog").close();
 for (const [video, name] of [
   [input, "input"],

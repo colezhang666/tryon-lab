@@ -2,6 +2,7 @@ import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
 import { createVideoHandler } from "./video-jobs.mjs";
 import { createImageHandler } from "./image-generation.mjs";
 import { createLedger } from "./billing.mjs";
@@ -9,8 +10,6 @@ import { createLedger } from "./billing.mjs";
 export const MODEL = "lucy-vton-3.5";
 export const DURATIONS = [10, 20, 30];
 export const PORT = 4180;
-const origins = [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`];
-const hosts = origins.map((origin) => new URL(origin).host);
 const root = fileURLToPath(new URL("./dist/", import.meta.url));
 const staticFiles = new Map([
   ["/", ["index.html", "text/html"]],
@@ -57,6 +56,8 @@ export function createApp({
   imageGenerate,
   inspectImage,
   ledger = null,
+  port = PORT,
+  desktopSession = "",
 } = {}) {
   const imageHandler = createImageHandler({
     apiKey,
@@ -75,6 +76,9 @@ export function createApp({
     issued = 0,
     nextAllowed = 0;
   return http.createServer(async (request, response) => {
+    const boundPort = port || request.socket.localPort;
+    const origins = [`http://127.0.0.1:${boundPort}`, `http://localhost:${boundPort}`];
+    const hosts = origins.map((origin) => new URL(origin).host);
     response.setHeader("X-Frame-Options", "DENY");
     response.setHeader(
       "Content-Security-Policy",
@@ -90,6 +94,13 @@ export function createApp({
     };
     if (!hosts.includes(request.headers.host))
       return send(403, { error: "只允许本机访问。" });
+    if (desktopSession) {
+      const cookie = request.headers.cookie?.split(";").map((item) => item.trim())
+        .find((item) => item.startsWith("tryon_session="))?.slice(14) || "";
+      const supplied = Buffer.from(cookie), expected = Buffer.from(desktopSession);
+      if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
+        return send(403, { error: "请从桌面应用进入工作台。" });
+    }
     if (request.url === "/api/billing" && request.method === "GET") {
       try {
         return send(

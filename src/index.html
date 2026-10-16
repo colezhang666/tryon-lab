@@ -679,7 +679,7 @@
               <h1 id="settings-title" tabindex="-1">接入说明</h1>
               <p>先明确连接与费用，再开始一次小范围验证。</p>
             </div>
-            <button id="refresh-config" class="secondary">刷新接入状态</button>
+            <div><button id="desktop-key-settings" class="secondary" hidden>API Key 设置</button> <button id="refresh-config" class="secondary">刷新接入状态</button></div>
           </div>
           <div class="settings-sheet">
             <h2>连接配置</h2>
@@ -716,7 +716,7 @@
               <li>观察右侧云端画面，需要时截图，结束时点击“停止试穿”。</li>
             </ol>
             <h2>密钥与照片</h2>
-            <p>
+            <p id="key-configuration-help">
               永久密钥由本地后端保管，不显示在网页。需要更换时，修改项目中被 Git
               忽略的 <code>.env</code> 内
               <code>DECART_API_KEY</code
